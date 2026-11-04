@@ -58,18 +58,28 @@ class ProgressService:
         self._clock = clock
         self.load_warning: Optional[str] = None
         self.save_error: Optional[str] = None
+        self._load_profile()
+
+    def _load_profile(self, data="__read__") -> None:
         now = self.now()
-        data = repository.load()
+        if isinstance(data, str) and data == "__read__":
+            data = self.repo.load()
         if data is None:
-            self.profile = PlayerProfile.new(config, now)
+            self.profile = PlayerProfile.new(self.cfg, now)
         else:
             try:
-                self.profile = PlayerProfile.from_dict(data, config)
+                self.profile = PlayerProfile.from_dict(data, self.cfg)
             except (KeyError, TypeError, ValueError, AttributeError) as exc:
-                repository.discard_corrupt()
-                self.profile = PlayerProfile.new(config, now)
+                self.repo.discard_corrupt()
+                self.profile = PlayerProfile.new(self.cfg, now)
                 self.load_warning = f"saved progress was unreadable and was reset ({exc})"
         self.profile.lives.refresh(now)
+
+    def reload(self, data="__read__") -> None:
+        """Re-read the stored profile (e.g. right after signing in, when the cloud copy may be newer).
+        Pass `data` when the repository was already read elsewhere (e.g. on a background thread)."""
+        self.load_warning = None
+        self._load_profile(data)
 
     # --- basics ---------------------------------------------------------------
     def now(self) -> float:

@@ -86,6 +86,29 @@ class Maze:
         self.walls[start[1]][start[0]] &= ~W
         self.walls[exit_[1]][exit_[0]] &= ~E
 
+    # --- (de)serialisation: used by the server (daily challenge) and the online client ----
+    def to_dict(self) -> dict:
+        return {"width": self.width, "height": self.height, "seed": self.seed, "algorithm": self.algorithm,
+                "start": list(self.start), "exit": list(self.exit), "walls": [list(r) for r in self.walls]}
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Maze":
+        """Rebuild a maze from stored walls. Raises ValueError if the data is malformed."""
+        try:
+            w, h = int(data["width"]), int(data["height"])
+            maze = cls(w, h, data.get("seed"), data.get("algorithm", "server"))
+            walls = [[int(v) for v in row] for row in data["walls"]]
+            if len(walls) != h or any(len(r) != w or any(not 0 <= v <= 15 for v in r) for r in walls):
+                raise ValueError("wall grid does not match the maze size")
+            maze.walls = walls
+            maze.start = (int(data["start"][0]), int(data["start"][1]))
+            maze.exit = (int(data["exit"][0]), int(data["exit"][1]))
+        except (KeyError, TypeError, IndexError) as exc:
+            raise ValueError(f"malformed maze data: {exc}") from exc
+        if not (maze.in_bounds(maze.start) and maze.in_bounds(maze.exit)):
+            raise ValueError("entrance or exit outside the maze")
+        return maze
+
     # --- geometry for renderers ------------------------------------------
     def _h_wall(self, x: int, y: int) -> bool:
         if y < self.height:

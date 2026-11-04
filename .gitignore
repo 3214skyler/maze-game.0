@@ -8,3 +8,8 @@ bin/
 .pytest_cache/
 *.apk
 *.aab
+
+# online configuration (copy config/online.json.example to config/online.json)
+config/online.json
+online.json
+session.json

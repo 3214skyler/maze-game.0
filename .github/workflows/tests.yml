@@ -1,0 +1,23 @@
+name: Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix: { python: ["3.10", "3.12"] }
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: pg }
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      MAZE_TEST_PG_DSN: "dbname=postgres user=postgres password=pg host=localhost"
+      KIVY_NO_ARGS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "${{ matrix.python }}" }
+      - run: sudo apt-get update && sudo apt-get install -y xvfb libgl1 libmtdev1
+      - run: pip install -r requirements.txt psycopg2-binary
+      - run: xvfb-run -a python -m pytest -v

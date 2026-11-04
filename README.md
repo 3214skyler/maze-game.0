@@ -49,6 +49,27 @@ Progress is saved as JSON (`progress.json`, atomic write, schema-versioned) in K
 moved to `progress.json.corrupt-<time>` and the game starts fresh instead of crashing; if saving fails the game
 keeps running and shows a warning on the menu.
 
+## Online: accounts, cloud save, daily challenge
+
+Optional and local-first: the game never needs an account. Signing in adds **cloud save** (pushed in the
+background, newest-XP-wins, never overwrites newer progress), a **daily challenge** (the same maze for everyone,
+fastest valid time wins) and a **public leaderboard**. All judging is server-side (time, path, rate limits).
+Setup guide: [`docs/ONLINE_SETUP.md`](docs/ONLINE_SETUP.md).
+
+| Piece | Where |
+|---|---|
+| Database, RLS, server functions | `backend/migrations/0001_online.sql` |
+| Auth, API, cloud sync, daily client | `game/online/` |
+| Daily challenge definition + publisher | `game/progression/daily.py`, `tools/publish_daily.py` |
+| Screens | `interface/screens/account.py`, `daily.py` |
+
+Backend tests run the real migration on PostgreSQL: `pip install -r requirements-dev.txt`, then
+`MAZE_TEST_PG_DSN="dbname=postgres user=postgres password=... host=localhost" pytest` (skipped if unreachable).
+
+| Account | Daily leaderboard |
+|---|---|
+| ![](docs/screenshots/account.png) | ![](docs/screenshots/daily.png) |
+
 ## Architecture
 
 | Package | Responsibility | Kivy? |
@@ -59,7 +80,9 @@ keeps running and shows a warning on the menu.
 | `game/progression` | `levels`, `difficulty`, `xp`, `rewards`, `unlocks`, `stats`, `session` (victory/defeat rules), `profile`, **`service` (the only API the UI uses)** | no |
 | `game/lives`, `game/economy` | `Lives` (time-based regeneration), `Wallet` (earn/spend ledger — shop-ready) | no |
 | `game/persistence` | `ProfileRepository` contract, `JsonProfileRepository`, `MemoryRepository` | no |
-| `interface/` | screens (splash, menu, level select, gameplay, victory, defeat), HUD components, effects, neon theme | yes |
+| `game/online` | Supabase auth, RPC client with token refresh, local-first cloud save, daily challenge client | no |
+| `backend/` | PostgreSQL migration (tables, RLS, validating functions) | - |
+| `interface/` | screens (splash, menu, level select, gameplay, victory, defeat, account, daily), HUD components, effects, neon theme | yes |
 
 Progress lives in `ProgressService`, never in widgets. A future `SupabaseRepository` only needs
 `load()`, `save()` and `discard_corrupt()` (see `game/persistence/repository.py`).
@@ -72,7 +95,8 @@ Progress lives in `ProgressService`, never in widgets. A future `SupabaseReposit
 
 ## Known limitations
 
-* Time and lives use the device clock: a player can cheat by changing it. Needs server-side validation (Supabase phase).
+* Time and lives of the normal levels use the device clock (a player can cheat by changing it); only the daily challenge is judged by the server. XP/coins are not yet server-authoritative.
+* The online layer was tested against a real PostgreSQL behind a simulated Supabase HTTP API, **not** against a live Supabase project, and the GitHub workflows have not been executed.
 * Timer keeps running if the app is sent to the background.
 * No sound yet; no achievements, daily challenges or special obstacles — the "challenge" and "achievement" coin sources are not implemented.
 * Balance values are first estimates and have not been playtested.

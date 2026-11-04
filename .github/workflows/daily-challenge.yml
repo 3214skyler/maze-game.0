@@ -1,0 +1,16 @@
+name: Publish daily challenges
+on:
+  schedule:
+    - cron: "5 0 * * *"      # every day at 00:05 UTC; publishes today + the next days (idempotent)
+  workflow_dispatch: {}
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: python tools/publish_daily.py --days 5
+        env:
+          MAZE_SUPABASE_URL: ${{ secrets.MAZE_SUPABASE_URL }}
+          MAZE_SUPABASE_SERVICE_KEY: ${{ secrets.MAZE_SUPABASE_SERVICE_KEY }}

@@ -1,0 +1,2 @@
+# Only needed to run the backend tests / admin tooling, not by the game itself
+psycopg2-binary>=2.9
