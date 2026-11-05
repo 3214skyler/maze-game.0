@@ -63,7 +63,7 @@ class FakeSupabase:
         assert url.startswith(URL)
         assert headers.get("apikey") == ANON_KEY
         path = url[len(URL):]
-        status, out = self._route(path, headers, body)
+        status, out = self._route(method, path, headers, body)
         self.calls.append((path, status))
         return status, out
 
@@ -74,7 +74,11 @@ class FakeSupabase:
         return {"access_token": access, "refresh_token": refresh, "expires_in": self.expires_in,
                 "user": {"id": uid}}
 
-    def _route(self, path, headers, body):
+    def _route(self, method, path, headers, body):
+        if method == "GET" and path == "/auth/v1/settings":
+            return 200, {"disable_signup": False, "mailer_autoconfirm": not self.confirm_email}
+        if method == "GET" and path.startswith("/rest/v1/") and not path.startswith("/rest/v1/rpc/"):
+            return self._table_read(path[len("/rest/v1/"):].split("?")[0], headers)
         if path == "/auth/v1/signup":
             email = body["email"]
             if email in self.users:
@@ -101,9 +105,26 @@ class FakeSupabase:
             return self._rpc(path.rsplit("/", 1)[1], headers, body or {})
         return 404, {"message": "not found"}
 
+    def _table_read(self, table, headers):
+        token = headers.get("Authorization", "").removeprefix("Bearer ")
+        role, uid = ("authenticated", self.access[token]) if token in self.access else ("anon", "")
+        conn = psycopg2.connect(self.dsn)
+        try:
+            cur = conn.cursor()
+            cur.execute(f"set local role {role}")
+            cur.execute("select set_config('request.jwt.claim.sub', %s, true)", (uid,))
+            try:
+                cur.execute(f"select * from public.{table} limit 1")
+            except psycopg2.Error as exc:
+                return 401 if role == "anon" else 403, {"code": exc.pgcode, "message": exc.diag.message_primary}
+            return 200, [list(r) for r in cur.fetchall()]
+        finally:
+            conn.close()
+
     def _rpc(self, name, headers, args):
-        token = headers["Authorization"].removeprefix("Bearer ")
-        if token == ANON_KEY:
+        token = headers.get("Authorization", "").removeprefix("Bearer ")
+        assert token != ANON_KEY, "the public key must never be sent as a Bearer token"
+        if not token:
             role, uid = "anon", ""
         elif token in self.access:
             role, uid = "authenticated", self.access[token]

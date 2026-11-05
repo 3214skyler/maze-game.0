@@ -30,7 +30,20 @@ To automate it, add both values as GitHub repository secrets
 (`MAZE_SUPABASE_URL`, `MAZE_SUPABASE_SERVICE_KEY`); `.github/workflows/daily-challenge.yml` then
 publishes the next 5 days every night at 00:05 UTC. Already published days are never overwritten.
 
-## 4. Android
+## 4. Check that everything is right
+Run this on your own computer (it needs access to your project):
+
+```bash
+python tools/check_online.py
+python tools/check_online.py --email you@example.com --password '...'   # also tests sign-in + today's challenge
+```
+It reports `OK` / `WARN` / `FAIL` for: connection and key, sign-up settings, whether the migration was applied,
+that anonymous visitors cannot read your tables, and (with an account) that today's challenge is published.
+
+Tip: in Supabase *Authentication → URL Configuration* set **Site URL** to a real page (e.g. your portfolio),
+otherwise the confirmation e-mail link ends on a "localhost" error page (the account is still confirmed).
+
+## 5. Android
 When the Buildozer build is added, the app needs the `INTERNET` permission
 (`android.permissions = INTERNET` in `buildozer.spec`).
 

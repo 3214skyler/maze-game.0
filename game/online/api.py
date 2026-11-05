@@ -50,9 +50,11 @@ class ApiClient:
             raise
 
     def _send(self, name: str, args: Dict[str, Any], public: bool):
-        token = self.config.anon_key if (public and self.session is None) else self.session.access_token
-        headers = {"apikey": self.config.anon_key, "Authorization": f"Bearer {token}",
-                   "Content-Type": "application/json"}
+        headers = {"apikey": self.config.anon_key, "Content-Type": "application/json"}
+        if self.session is not None:
+            headers["Authorization"] = f"Bearer {self.session.access_token}"
+        # Anonymous calls send ONLY `apikey`. New-style keys (sb_publishable_...) are not JWTs and must not
+        # be sent as a Bearer token; the legacy anon key also works with `apikey` alone.
         return self.transport.request("POST", f"{self.config.url}/rest/v1/rpc/{name}", headers, args)
 
     def rpc(self, name: str, args: Optional[Dict[str, Any]] = None, public: bool = False) -> Any:

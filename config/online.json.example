@@ -1,4 +1,4 @@
 {
   "url": "https://YOUR-PROJECT.supabase.co",
-  "anon_key": "YOUR-ANON-PUBLIC-KEY"
+  "anon_key": "YOUR-PUBLIC-KEY (anon key or sb_publishable_...)"
 }
