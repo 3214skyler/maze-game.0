@@ -24,11 +24,18 @@ def test_spec_has_the_essentials(spec):
     assert (ROOT / "main.py").exists()                       # buildozer's entry point
 
 
+def png_size(path):
+    """(width, height) read from the PNG header: standard library only, no Pillow needed."""
+    import struct
+    head = path.read_bytes()[:24]
+    assert head[:8] == b"\x89PNG\r\n\x1a\n" and head[12:16] == b"IHDR", f"{path} is not a PNG"
+    return struct.unpack(">II", head[16:24])
+
+
 def test_icon_and_presplash_exist_and_are_valid_images():
-    from PIL import Image
     for name in ("assets/icon.png", "assets/presplash.png"):
-        img = Image.open(ROOT / name)
-        assert img.size[0] == img.size[1] >= 512
+        w, h = png_size(ROOT / name)
+        assert w == h >= 512
 
 
 def test_spec_assets_point_at_real_files(spec):
