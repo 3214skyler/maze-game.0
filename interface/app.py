@@ -12,6 +12,7 @@ from game.online.cloud import CloudRepository
 from game.persistence.json_store import JsonProfileRepository
 from game.progression.service import ProgressService
 from interface.components.async_task import run_async
+from interface.navigation import back_target
 from interface.screens.account import AccountScreen
 from interface.screens.daily import DailyPlayScreen, DailyScreen
 from interface.screens.gameplay import GameplayScreen
@@ -30,6 +31,8 @@ class MazeGameApp(App):
 
     def build(self):
         Window.clearcolor = neon.BG
+        Window.softinput_mode = "below_target"          # Android: keep the focused text field above the keyboard
+        Window.bind(on_keyboard=self._on_back)
         # user_data_dir is the correct writable location on Android, Windows and Linux alike
         data_dir = Path(os.environ.get("MAZE_SAVE_DIR") or self.user_data_dir)
         self.repo = CloudRepository(JsonProfileRepository(data_dir / "progress.json"))
@@ -50,6 +53,25 @@ class MazeGameApp(App):
                        DailyScreen(self.account), DailyPlayScreen(self.account)):
             sm.add_widget(screen)
         return sm
+
+    def _on_back(self, _window, key, *_args):
+        """Android Back button / Esc: go back one screen; on the menu let the system close the app."""
+        if key != 27 or self.root is None:
+            return False
+        target = back_target(self.root.current)
+        if target is None:
+            return False
+        if self.root.current == "game":
+            self.root.get_screen("game").leave(target)     # abandoning a level is free
+        else:
+            self.root.current = target
+        return True
+
+    def on_pause(self):
+        return True            # Android: stay alive in the background instead of being killed on app switch
+
+    def on_resume(self):
+        pass
 
     def on_stop(self):
         game = self.root.get_screen("game") if self.root else None

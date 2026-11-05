@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import socket
+import ssl
 import urllib.error
 import urllib.request
 from typing import Any, Dict, Optional, Tuple
@@ -21,15 +22,25 @@ class Transport(Protocol):
         """Return (status_code, parsed_json_or_None). Raise NetworkError when unreachable."""
 
 
+def make_ssl_context() -> ssl.SSLContext:
+    """Android's Python has no system CA store: use certifi's bundle when it is installed."""
+    try:
+        import certifi
+        return ssl.create_default_context(cafile=certifi.where())
+    except Exception:                                   # certifi missing/unreadable: fall back to the OS store
+        return ssl.create_default_context()
+
+
 class UrllibTransport:
     def __init__(self, timeout: float = 10.0):
         self.timeout = timeout
+        self._ctx = make_ssl_context()
 
     def request(self, method, url, headers, body=None):
         data = None if body is None else json.dumps(body).encode("utf-8")
         req = urllib.request.Request(url, data=data, method=method, headers=dict(headers))
         try:
-            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=self.timeout, context=self._ctx) as resp:
                 return resp.status, self._parse(resp.read())
         except urllib.error.HTTPError as exc:               # 4xx / 5xx still carry a JSON body
             return exc.code, self._parse(exc.read())

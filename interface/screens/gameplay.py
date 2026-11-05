@@ -227,10 +227,7 @@ class GameplayScreen(Screen):
             self._reset()
         elif text == "n":
             self.go_next()                      # guarded: only works if the next level is unlocked
-        elif key == 27:
-            self.leave("levels")
-            return True
-        return False
+        return False                                    # Esc/Back is handled globally (interface/app.py)
 
     # --- HUD ----------------------------------------------------------------------------------------
     def _refresh_timer(self):
