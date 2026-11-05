@@ -63,6 +63,11 @@ def test_publisher_sends_ignore_duplicates_and_uses_service_key():
     assert sent["method"] == "POST" and sent["url"].endswith("/rest/v1/daily_challenges?on_conflict=day")
     assert "ignore-duplicates" in sent["headers"]["Prefer"] and len(sent["body"]) == 3
 
+    publish_daily.publish("https://x.supabase.co", "sb_secret_abc", 1, T(), start=date(2026, 1, 1))
+    assert "Authorization" not in sent["headers"] and sent["headers"]["apikey"] == "sb_secret_abc"
+    publish_daily.publish("https://x.supabase.co", "eyJhbGciOi.legacy.jwt", 1, T(), start=date(2026, 1, 1))
+    assert sent["headers"]["Authorization"] == "Bearer eyJhbGciOi.legacy.jwt"
+
     class Bad:
         def request(self, *a, **k):
             return 401, {"message": "bad key"}

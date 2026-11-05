@@ -22,8 +22,10 @@ from game.progression.daily import daily_row, today_utc  # noqa: E402
 def publish(url, service_key, days, transport=None, start=None):
     transport = transport or UrllibTransport(timeout=30)
     start = start or today_utc()
-    headers = {"apikey": service_key, "Authorization": f"Bearer {service_key}",
-               "Content-Type": "application/json", "Prefer": "resolution=ignore-duplicates,return=minimal"}
+    headers = {"apikey": service_key, "Content-Type": "application/json",
+               "Prefer": "resolution=ignore-duplicates,return=minimal"}
+    if service_key.startswith("eyJ"):          # legacy service_role keys are JWTs; new sb_secret_ keys are not
+        headers["Authorization"] = f"Bearer {service_key}"
     rows = [daily_row(start + timedelta(days=i)) for i in range(days)]
     status, body = transport.request("POST", f"{url.rstrip('/')}/rest/v1/daily_challenges?on_conflict=day",
                                      headers, rows)
