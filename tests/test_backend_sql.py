@@ -276,9 +276,11 @@ def test_board_keeps_only_the_best_time_and_ranks_players(db):
     run = db.start_run(a)                       # a tries again and is slower: must not replace the 30 s time
     db.age_run(run["run_id"], 45)
     assert db.submit(a, run["run_id"], solution(maze))["best_ms"] < 31000
-    run = db.start_run(a)                       # a improves to 5 s -> becomes first
-    db.age_run(run["run_id"], 5)
-    res = db.submit(a, run["run_id"], solution(maze))
+    run = db.start_run(a)
+    path = solution(maze)
+    improved_secs = max(10, len(path) * 0.08 + 2)
+    db.age_run(run["run_id"], improved_secs)
+    res = db.submit(a, run["run_id"], path)
     assert "rank" in res, f"Submission result: {res}"
     assert res["rank"] == 1
     db.as_user(b)
