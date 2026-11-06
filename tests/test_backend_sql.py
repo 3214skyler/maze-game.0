@@ -279,6 +279,7 @@ def test_board_keeps_only_the_best_time_and_ranks_players(db):
     run = db.start_run(a)                       # a improves to 5 s -> becomes first
     db.age_run(run["run_id"], 5)
     res = db.submit(a, run["run_id"], solution(maze))
+    assert "rank" in res, f"Submission result: {res}"
     assert res["rank"] == 1
     db.as_user(b)
     board = db.one("select public.get_daily_leaderboard()")
