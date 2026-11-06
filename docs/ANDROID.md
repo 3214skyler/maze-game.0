@@ -14,6 +14,8 @@ of Kivy apps often need one or two small adjustments.
 
 ## Locally (Linux, needs ~10 GB and good internet)
 ```bash
+sudo apt install -y git zip unzip openjdk-17-jdk autoconf automake libtool libltdl-dev pkg-config \
+  zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev build-essential
 pip install buildozer "cython<3"
 buildozer -v android debug      # APK appears in bin/
 ```

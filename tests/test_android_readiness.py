@@ -105,3 +105,11 @@ def test_back_button_navigation_map():
         while cur is not None and steps < 10:
             cur, steps = back_target(cur), steps + 1
         assert cur is None and steps < 10
+
+
+def test_android_workflow_installs_the_packages_the_build_needs():
+    """Regression: libffi's autoreconf failed with 'undefined macro LT_SYS_SYMBOL_USCORE' without libltdl-dev."""
+    text = (ROOT / ".github" / "workflows" / "android.yml").read_text()
+    for pkg in ("libltdl-dev", "libtool", "autoconf", "automake", "libffi-dev", "libssl-dev", "zip", "unzip"):
+        assert pkg in text, pkg
+    assert "buildozer" in text and "upload-artifact" in text
