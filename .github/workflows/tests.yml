@@ -21,3 +21,9 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y xvfb libgl1 libmtdev1
       - run: pip install -r requirements.txt psycopg2-binary
       - run: xvfb-run -a python -m pytest -v
+      - name: Daily-challenge tests for every maze size (Monday 10x10 ... Sunday 22x22)
+        run: |
+          for shift in 1 2 3 4 5 6; do
+            MAZE_TEST_MAZE_SHIFT=$shift xvfb-run -a python -m pytest -q \
+              tests/test_backend_sql.py tests/test_online_e2e.py tests/test_online_ui.py tests/test_check_online.py
+          done

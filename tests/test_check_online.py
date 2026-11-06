@@ -62,8 +62,7 @@ def test_exposed_table_is_flagged_as_a_security_failure():
 
 def test_against_the_real_database_everything_passes(dsn):
     pytest.importorskip("psycopg2")
-    from fake_supabase import ANON_KEY, URL, FakeSupabase
-    from game.progression.daily import build_daily_maze
+    from fake_supabase import ANON_KEY, URL, FakeSupabase, today_maze
     server = FakeSupabase(dsn)
     cfg = OnlineConfig(URL, ANON_KEY)
     results = check_online.run_checks(cfg, server)
@@ -78,7 +77,7 @@ def test_against_the_real_database_everything_passes(dsn):
     acc.sign_up("chk@t.dev", "secret12", "checker_1")
     missing = by_name(check_online.run_checks(cfg, server, "chk@t.dev", "secret12"))
     assert missing["Today's challenge"].status == "FAIL" and "publish_daily" in missing["Today's challenge"].detail
-    server.publish_today(build_daily_maze(datetime.now(timezone.utc).date()))
+    server.publish_today(today_maze())
     done = by_name(check_online.run_checks(cfg, server, "chk@t.dev", "secret12"))
     assert done["Today's challenge"].status == "OK" and done["Sign in"].status == "OK"
     wrong = by_name(check_online.run_checks(cfg, server, "chk@t.dev", "bad-password"))

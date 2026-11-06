@@ -9,7 +9,7 @@ os.environ.setdefault("KIVY_NO_CONSOLELOG", "1")
 pytest.importorskip("kivy")
 pytest.importorskip("psycopg2")
 
-from fake_supabase import ANON_KEY, URL, FakeSupabase  # noqa: E402
+from fake_supabase import ANON_KEY, URL, FakeSupabase, seconds_needed, today_maze  # noqa: E402
 from game.maze.solver import solve  # noqa: E402
 from game.online.account import Account  # noqa: E402
 from game.online.cloud import CloudRepository  # noqa: E402
@@ -123,14 +123,14 @@ def test_unconfigured_build_degrades_gracefully(env):
 
 def test_daily_requires_sign_in(env):
     sm, server, acc, repo, svc, s = env
-    server.publish_today(build_daily_maze(datetime.now(timezone.utc).date()))
+    server.publish_today(today_maze())
     s["daily"].on_enter()
     assert s["daily"].play_btn.disabled and "Sign in" in s["daily"].message.text
 
 
 def test_daily_play_submit_and_leaderboard(env):
     sm, server, acc, repo, svc, s = env
-    maze = build_daily_maze(datetime.now(timezone.utc).date())
+    maze = today_maze()
     server.publish_today(maze)
     fill(s["account"]); s["account"].do_sign_up()
     d, p = s["daily"], s["daily_play"]
@@ -138,7 +138,7 @@ def test_daily_play_submit_and_leaderboard(env):
     assert not d.play_btn.disabled and "No times yet" in texts(d.grid)
     d.play()
     assert p.run is not None and p.run.maze.walls == maze.walls
-    server.age_run(p.run.run_id, 14)
+    server.age_run(p.run.run_id, seconds_needed(maze, 12))
     for cell in solve(p.run.maze)[1:]:
         p.paths.extend(cell)
     p.view.refresh()
@@ -151,7 +151,7 @@ def test_daily_play_submit_and_leaderboard(env):
 
 def test_daily_rejection_is_explained(env):
     sm, server, acc, repo, svc, s = env
-    server.publish_today(build_daily_maze(datetime.now(timezone.utc).date()))
+    server.publish_today(today_maze())
     fill(s["account"]); s["account"].do_sign_up()
     s["daily"].on_enter(); s["daily"].play()
     p = s["daily_play"]
@@ -170,7 +170,7 @@ def test_daily_without_a_published_maze_shows_a_friendly_message(env):
 
 def test_player_can_restart_and_reset_without_the_server(env):
     sm, server, acc, repo, svc, s = env
-    server.publish_today(build_daily_maze(datetime.now(timezone.utc).date()))
+    server.publish_today(today_maze())
     fill(s["account"]); s["account"].do_sign_up()
     s["daily"].on_enter(); s["daily"].play()
     p = s["daily_play"]

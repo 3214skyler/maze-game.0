@@ -13,6 +13,7 @@ import psycopg2.extras  # noqa: E402
 from game.maze.maze import Maze  # noqa: E402
 from game.maze.solver import solve  # noqa: E402
 from game.progression.daily import build_daily_maze  # noqa: E402
+from fake_supabase import seconds_needed, today_maze, wall_crossing_path  # noqa: E402
 from datetime import datetime, timezone  # noqa: E402
 
 BACKEND = Path(__file__).resolve().parent.parent / "backend"
@@ -65,7 +66,7 @@ class Db:
 
     def publish_today(self, maze=None):
         self.admin()
-        maze = maze or build_daily_maze(datetime.now(timezone.utc).date())
+        maze = maze or today_maze()
         self.cur.execute(
             "insert into public.daily_challenges (day, seed, algorithm, width, height, start_cell, exit_cell, walls) "
             "values ((now() at time zone 'utc')::date, %s, %s, %s, %s, %s, %s, %s)",
@@ -199,9 +200,10 @@ def test_valid_solution_is_accepted_and_ranked(db):
     u = db.new_user("fast_one")
     maze = db.publish_today()
     run = db.start_run(u)
-    db.age_run(run["run_id"], 12)
+    t = seconds_needed(maze, 10)
+    db.age_run(run["run_id"], t)
     res = db.submit(u, run["run_id"], solution(maze))
-    assert res["accepted"] is True and res["rank"] == 1 and 11500 <= res["elapsed_ms"] <= 12500
+    assert res["accepted"] is True and res["rank"] == 1 and abs(res["elapsed_ms"] / 1000 - t) < 1
 
 
 def test_cheating_attempts_are_rejected(db):
@@ -216,12 +218,7 @@ def test_cheating_attempts_are_rejected(db):
         "bad_path": {"not": "a list"}, "bad_length": [good[0]], "bad_cell": [good[0], "x"],
         "out_of_bounds": [good[0], [999, 999]],
     }
-    # wall_crossed: take a real neighbour of the start that is separated by a wall
-    start = tuple(good[0])
-    for n in maze.neighbors(start):
-        if not maze.can_move(start, n):
-            cases["wall_crossed"] = [list(start), list(n)]
-            break
+    cases["wall_crossed"] = wall_crossing_path(maze)
     for reason, path in cases.items():
         assert path is not None, reason
         run = db.start_run(u)
@@ -256,7 +253,7 @@ def test_run_expiry_and_double_submit_and_foreign_run(db):
     db.age_run(r1["run_id"], 3601)
     assert db.submit(a, r1["run_id"], solution(maze))["reason"] == "run_expired"
     r2 = db.start_run(a)
-    db.age_run(r2["run_id"], 20)
+    db.age_run(r2["run_id"], seconds_needed(maze, 15))
     db.as_user(b)
     db.fails("select public.submit_daily_run(%s, %s)", (r2["run_id"], json.dumps(solution(maze))),
              contains="run_not_found")                                   # cannot use someone else's run
@@ -269,15 +266,16 @@ def test_run_expiry_and_double_submit_and_foreign_run(db):
 def test_board_keeps_only_the_best_time_and_ranks_players(db):
     a, b, c = db.new_user("player_aa"), db.new_user("player_bb"), db.new_user("player_cc")
     maze = db.publish_today()
-    for uid, secs in ((a, 30), (b, 10), (c, 20)):
+    base = seconds_needed(maze, 2)              # the fastest time the server would accept for this maze
+    for uid, secs in ((a, base + 30), (b, base + 10), (c, base + 20)):
         run = db.start_run(uid)
         db.age_run(run["run_id"], secs)
         db.submit(uid, run["run_id"], solution(maze))
     run = db.start_run(a)                       # a tries again and is slower: must not replace the 30 s time
-    db.age_run(run["run_id"], 45)
-    assert db.submit(a, run["run_id"], solution(maze))["best_ms"] < 31000
+    db.age_run(run["run_id"], base + 45)
+    assert db.submit(a, run["run_id"], solution(maze))["best_ms"] < (base + 31) * 1000
     run = db.start_run(a)                       # a improves to 5 s -> becomes first
-    db.age_run(run["run_id"], 5)
+    db.age_run(run["run_id"], base + 5)
     res = db.submit(a, run["run_id"], solution(maze))
     assert res["rank"] == 1
     db.as_user(b)
@@ -297,3 +295,18 @@ def test_attempt_limit(db):
         db.start_run(u)
     db.as_user(u)
     db.fails("select public.start_daily_run()", contains="too_many_attempts")
+
+
+@pytest.mark.parametrize("weekday_offset", range(7))
+def test_every_weekday_size_works_end_to_end(db, weekday_offset):
+    """Daily mazes grow from Monday (10x10) to Sunday (22x22): the rules must hold for every size."""
+    from datetime import timedelta
+    maze = build_daily_maze(datetime(2026, 11, 2, tzinfo=timezone.utc).date() + timedelta(days=weekday_offset))
+    u = db.new_user("any_day_1")
+    db.publish_today(maze)
+    quick = db.start_run(u)
+    assert db.submit(u, quick["run_id"], solution(maze))["reason"] == "too_fast"       # scripted: instantly
+    run = db.start_run(u)
+    db.age_run(run["run_id"], seconds_needed(maze, 1))
+    res = db.submit(u, run["run_id"], solution(maze))
+    assert res["accepted"] is True and res["rank"] == 1, (maze.width, res)

@@ -6,7 +6,7 @@ import pytest
 
 pytest.importorskip("psycopg2")
 
-from fake_supabase import ANON_KEY, URL, FakeSupabase  # noqa: E402
+from fake_supabase import ANON_KEY, URL, FakeSupabase, seconds_needed, today_maze, wall_crossing_path  # noqa: E402
 from game.maze.solver import solve  # noqa: E402
 from game.online.account import Account, AccountStatus  # noqa: E402
 from game.online.cloud import CloudRepository  # noqa: E402
@@ -257,7 +257,7 @@ def test_detach_returns_to_local_only(server, tmp_path, clock):
 
 # ----------------------------------------------------------------------------- daily challenge
 def test_daily_challenge_full_flow(server, tmp_path):
-    maze = build_daily_maze(datetime.now(timezone.utc).date())
+    maze = today_maze()
     server.publish_today(maze)
     a = signed_up(server, tmp_path, "a@t.dev", "daily_a", "da")
     b = signed_up(server, tmp_path, "b@t.dev", "daily_b", "db")
@@ -265,12 +265,12 @@ def test_daily_challenge_full_flow(server, tmp_path):
 
     run_a = da.start()
     assert run_a.maze.walls == maze.walls and solve(run_a.maze) == solve(maze)
-    server.age_run(run_a.run_id, 20)
+    server.age_run(run_a.run_id, seconds_needed(maze, 18))
     res = da.submit(run_a, solve(run_a.maze))
     assert res.accepted and res.rank == 1 and res.message == ""
 
     run_b = db_.start()
-    server.age_run(run_b.run_id, 9)
+    server.age_run(run_b.run_id, seconds_needed(maze, 7))
     assert db_.submit(run_b, solve(run_b.maze)).rank == 1                  # b is faster
 
     board = da.leaderboard()
@@ -279,7 +279,7 @@ def test_daily_challenge_full_flow(server, tmp_path):
 
 
 def test_daily_cheating_is_rejected_with_a_readable_reason(server, tmp_path):
-    maze = build_daily_maze(datetime.now(timezone.utc).date())
+    maze = today_maze()
     server.publish_today(maze)
     acc = signed_up(server, tmp_path)
     client = DailyClient(acc.api)
@@ -288,9 +288,7 @@ def test_daily_cheating_is_rejected_with_a_readable_reason(server, tmp_path):
     assert not res.accepted and res.reason == "too_fast" and "quickly" in res.message
     run = client.start()
     server.age_run(run.run_id, 30)
-    start = run.maze.start
-    wall_neighbour = next(n for n in run.maze.neighbors(start) if not run.maze.can_move(start, n))
-    res = client.submit(run, [start, wall_neighbour])
+    res = client.submit(run, [tuple(c) for c in wall_crossing_path(run.maze)])
     assert res.reason == "wall_crossed"
     assert client.leaderboard() == []
 
@@ -301,7 +299,7 @@ def test_daily_errors_have_friendly_messages(server, tmp_path):
     with pytest.raises(ServerError) as exc:
         client.start()
     assert exc.value.code == "no_challenge_today" and "not published" in friendly(exc.value)
-    server.publish_today(build_daily_maze(datetime.now(timezone.utc).date()))
+    server.publish_today(today_maze())
     guest_client = DailyClient(account(server, tmp_path, "guest").api)
     with pytest.raises(AuthError):
         guest_client.start()

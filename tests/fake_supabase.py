@@ -1,7 +1,9 @@
 """A fake Supabase project for tests: Auth + PostgREST RPC in front of a REAL PostgreSQL.
 The SQL, the roles and Row Level Security are the real thing; only the HTTP envelope is simulated."""
 import itertools
+import os
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import psycopg2
 import psycopg2.extras
@@ -150,3 +152,29 @@ class FakeSupabase:
             return 200, result
         finally:
             conn.close()
+
+
+def today_maze():
+    """Today's daily maze. MAZE_TEST_MAZE_SHIFT=n uses the maze of n days ahead, to test every weekday size."""
+    from game.progression.daily import build_daily_maze
+    shift = int(os.environ.get("MAZE_TEST_MAZE_SHIFT", "0"))
+    return build_daily_maze(datetime.now(timezone.utc).date() + timedelta(days=shift))
+
+
+def seconds_needed(maze, extra=2.0):
+    """Seconds a run must have been open for the server to accept this maze's solution (80 ms per cell
+    minimum) plus `extra`. Tests must never hard-code times: maze size changes with the weekday."""
+    from game.maze.solver import solve
+    return len(solve(maze)) * 0.08 + extra
+
+
+def wall_crossing_path(maze):
+    """A path that follows the real solution and then steps THROUGH a wall (exists in every perfect maze,
+    though not necessarily next to the entrance)."""
+    from game.maze.solver import solve
+    route = solve(maze)
+    for i, cell in enumerate(route):
+        for nxt in maze.neighbors(cell):
+            if not maze.can_move(cell, nxt):
+                return [list(c) for c in route[:i + 1]] + [list(nxt)]
+    raise AssertionError("maze without any wall next to its solution")
