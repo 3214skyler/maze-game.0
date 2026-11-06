@@ -14,13 +14,11 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
       - name: System packages
-  run: |
-    sudo apt-get update
-    sudo apt-get install -y git zip unzip autoconf automake libtool libltdl-dev pkg-config zlib1g-dev \
-      libncurses-dev cmake libffi-dev libssl-dev build-essential ccache
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip autoconf automake libtool pkg-config zlib1g-dev \
+            libncurses-dev cmake libffi-dev libssl-dev build-essential ccache
       - run: pip install buildozer "cython<3" virtualenv
-      - name: Accept Android SDK licenses
-        run: yes | buildozer android update sdk --all
       - name: Online configuration (public values only)
         env:
           URL: ${{ secrets.MAZE_SUPABASE_URL }}
