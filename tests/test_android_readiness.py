@@ -18,7 +18,7 @@ def spec():
 
 def test_spec_has_the_essentials(spec):
     reqs = [r.strip() for r in spec["requirements"].split(",")]
-    assert "kivy==2.3.0" in reqs and "certifi" in reqs and "python3" in reqs
+    assert "certifi" in reqs and any(r.startswith("kivy==2.3.") for r in reqs)
     assert "INTERNET" in spec["android.permissions"]
     assert spec["orientation"] == "portrait" and int(spec["android.minapi"]) >= 21
     assert (ROOT / "main.py").exists()                       # buildozer's entry point
@@ -113,3 +113,18 @@ def test_android_workflow_installs_the_packages_the_build_needs():
     for pkg in ("libltdl-dev", "libtool", "autoconf", "automake", "libffi-dev", "libssl-dev", "zip", "unzip"):
         assert pkg in text, pkg
     assert "buildozer" in text and "upload-artifact" in text
+
+
+def test_python_is_pinned_to_a_version_kivy_2_3_can_compile_with(spec):
+    """Regression: p4a's default Python 3.14 breaks Kivy 2.3's generated C ('_PyLong_AsByteArray: too few
+    arguments'). python3 and hostpython3 must be pinned to the SAME 3.11/3.12 release."""
+    reqs = {r.split("==")[0].strip(): r.split("==")[1].strip() for r in spec["requirements"].split(",") if "==" in r}
+    assert "python3" in reqs and "hostpython3" in reqs, "pin python3 AND hostpython3"
+    assert reqs["python3"] == reqs["hostpython3"], "python3 and hostpython3 must match"
+    major, minor = (int(x) for x in reqs["python3"].split(".")[:2])
+    assert (major, minor) in ((3, 11), (3, 12)), f"Python {reqs['python3']} is not supported by Kivy 2.3's Cython"
+
+
+def test_android_cache_never_restores_a_build_from_another_version():
+    text = (ROOT / ".github" / "workflows" / "android.yml").read_text()
+    assert "restore-keys" not in text and "hashFiles('buildozer.spec')" in text

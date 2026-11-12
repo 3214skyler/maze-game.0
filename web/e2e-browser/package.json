@@ -1,0 +1,11 @@
+{
+  "name": "maze-game-web-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Optional real-browser smoke test (headless Chromium). Not needed to build or deploy the game.",
+  "scripts": { "e2e": "node smoke.mjs" },
+  "devDependencies": {
+    "@sparticuz/chromium": "^153.0.0",
+    "puppeteer-core": "^24.43.1"
+  }
+}

@@ -36,8 +36,8 @@ jobs:
           path: |
             .buildozer
             ~/.buildozer
-          key: buildozer-${{ hashFiles('buildozer.spec') }}
-          restore-keys: buildozer-
+          # exact key only: never restore a build tree made with another Python/Kivy version
+          key: buildozer-v2-${{ hashFiles('buildozer.spec') }}
       - run: buildozer -v android debug
       - uses: actions/upload-artifact@v4
         with:

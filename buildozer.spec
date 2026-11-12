@@ -11,8 +11,11 @@ source.include_exts = py,png,jpg,json,ttf,wav,ogg,atlas
 source.exclude_dirs = tests, docs, backend, tools, .github, .git, bin, .buildozer, .pytest_cache, __pycache__, platforms
 source.exclude_patterns = *.example, requirements*.txt, pytest.ini, README.md, .env*, *.sql
 
+# Python is PINNED (python3 and hostpython3 must be the same version). Python-for-Android now defaults to
+# Python 3.14, whose C API breaks the code Kivy 2.3's Cython (<= 3.0.12) generates (_PyLong_AsByteArray).
+# Raise this only after a Kivy release that supports a newer Python.
 # certifi: Android's Python has no CA store, needed for HTTPS to Supabase
-requirements = python3,kivy==2.3.0,certifi
+requirements = python3==3.11.9,hostpython3==3.11.9,kivy==2.3.1,certifi
 
 icon.filename = %(source.dir)s/assets/icon.png
 presplash.filename = %(source.dir)s/assets/presplash.png

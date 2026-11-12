@@ -49,6 +49,15 @@ Progress is saved as JSON (`progress.json`, atomic write, schema-versioned) in K
 moved to `progress.json.corrupt-<time>` and the game starts fresh instead of crashing; if saving fails the game
 keeps running and shows a warning on the menu.
 
+## Web version
+
+Play in the browser (same accounts, daily challenge and leaderboard as Android). TypeScript + Vite + Canvas in
+[`web/`](web/), deployable on Vercel: see [`docs/WEB.md`](docs/WEB.md).
+
+| Menu | Mobile play | Daily leaderboard |
+|---|---|---|
+| ![](docs/screenshots/web-menu.png) | ![](docs/screenshots/web-mobile-play.png) | ![](docs/screenshots/web-daily.png) |
+
 ## Online: accounts, cloud save, daily challenge
 
 Optional and local-first: the game never needs an account. Signing in adds **cloud save** (pushed in the

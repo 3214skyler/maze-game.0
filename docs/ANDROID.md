@@ -9,7 +9,8 @@
 3. Open the finished run → **Artifacts → mazegame-debug-apk**, unzip, send the `.apk` to your phone.
 4. On the phone allow *Install unknown apps* for the app you opened the file with, then install.
 
-If the build fails, open the failed step, copy the last ~40 lines of the log and send them: first builds
+Python is pinned to 3.11 in `buildozer.spec` on purpose (the newest Python breaks Kivy 2.3's compiled code); don't
+remove that pin. If the build fails, open the failed step, copy the last ~40 lines of the log and send them: first builds
 of Kivy apps often need one or two small adjustments.
 
 ## Locally (Linux, needs ~10 GB and good internet)
