@@ -59,8 +59,14 @@ const csp = vercel.headers[0].headers.find((h) => h.key === "Content-Security-Po
   .replace("https://*.supabase.co", `https://*.supabase.co ${SUPA}`);
 const types = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml" };
 const dist = path.join(WEB, "dist-e2e");
+let speedInsightsHits = [];
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent((req.url || "/").split("?")[0]);
+  if (p.startsWith("/_vercel/speed-insights/")) {           // what Vercel serves in production (stubbed here)
+    speedInsightsHits.push(p);
+    res.writeHead(p.endsWith("script.js") ? 200 : 204, { "Content-Type": "text/javascript", "Content-Security-Policy": csp });
+    return res.end(p.endsWith("script.js") ? "/* speed insights stub */" : "");
+  }
   if (p === "/") p = "/index.html";
   const file = path.join(dist, path.normalize(p));
   if (!file.startsWith(dist) || !fs.existsSync(file)) { res.writeHead(404); return res.end("not found"); }
@@ -159,6 +165,8 @@ async function drawWithTouch(page, maze, route) {
   await page.evaluate(() => (location.hash = "#/play/5"));          // cannot skip ahead by editing the URL
   await sleep(300);
   check("a locked level cannot be opened through the URL", page.url().endsWith("#/levels"), page.url());
+  const si = await page.evaluate(() => !!document.head.querySelector('script[src="/_vercel/speed-insights/script.js"]'));
+  check("Speed Insights script is injected and allowed by the production CSP", si && speedInsightsHits.includes("/_vercel/speed-insights/script.js"), JSON.stringify(speedInsightsHits));
   check("no console errors or CSP violations (guest flow)", errors.length === 0, errors.join(" | "));
   await context.close();
 }

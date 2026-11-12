@@ -1,4 +1,5 @@
 import "./styles.css";
+import { injectSpeedInsights } from "@vercel/speed-insights"; // framework-agnostic entry point (NOT ".../next": this is not a Next.js app)
 import { ProgressStore } from "./game/progress";
 import { Account } from "./net/account";
 import { StorageLike } from "./net/auth";
@@ -74,3 +75,7 @@ if (account?.signedIn) {
   // learn the username of a returning player, then refresh the menu if it is still showing
   void account.refreshProfile().then(() => parseHash(location.hash).route === "menu" && render(), () => {});
 }
+
+// Vercel Speed Insights: real-user Web Vitals. Production only; the script is served by Vercel from this same
+// origin (/_vercel/speed-insights/...), so the Content-Security-Policy needs no change. Enable it in the Vercel dashboard.
+if (import.meta.env.PROD) injectSpeedInsights();

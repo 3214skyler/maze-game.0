@@ -24,6 +24,16 @@ Without those two variables the game still runs as an offline guest build (Accou
 `web/vercel.json` also sends security headers (Content-Security-Policy, nosniff, referrer policy). The CSP allows
 connections only to `'self'` and `https://*.supabase.co`: if you later use a **custom Supabase domain**, add it to `connect-src`.
 
+## Vercel Speed Insights (real-user performance)
+Already wired in `web/src/main.ts` with `injectSpeedInsights()` (production builds only). Note the import is
+`@vercel/speed-insights`, **not** `@vercel/speed-insights/next`: that one is for Next.js apps.
+1. Vercel dashboard → your project → **Speed Insights → Enable** (one click, then redeploy).
+2. Visit the deployed site; data appears in the dashboard after some visits.
+
+It needs no CSP change (the script and the data endpoint are served from your own domain by Vercel). Because the game
+uses `#/hash` routes, Speed Insights shows all screens under the single page `/`. It collects anonymous Web Vitals;
+mention analytics in your privacy policy before publishing on app stores.
+
 ## Tests
 ```bash
 cd web
